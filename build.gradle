@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    repositories {
+        jcenter()
+        mavenCentral()
+        maven { url 'https://plugins.gradle.org/m2/'}
+    }
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven { url 'https://jitpack.io' }
+    maven { url 'http://git.cargoflow.app:8081/repository/maven-public/'}
+}
+
+dependencies {
+    implementation 'com.google.guava:guava:22.0'
+    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'com.jayway.jsonpath:json-path:2.4.0'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+    implementation 'org.apache.logging.log4j:log4j-core:2.13.3'
+    implementation 'org.apache.logging.log4j:log4j-api:2.13.3'
+    implementation 'org.apache.logging.log4j:log4j-1.2-api:2.13.3'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.13.3'
+    implementation 'org.javalite:activejdbc:2.3'
+//    implementation 'app.cargoflow:e-commerce-api:2.0.30'
+    implementation 'org.postgresql:postgresql:42.2.18'
+    implementation group: 'commons-httpclient', name: 'commons-httpclient', version: '3.1'
+
+}
+
+test {
+    useJUnitPlatform()
+}
