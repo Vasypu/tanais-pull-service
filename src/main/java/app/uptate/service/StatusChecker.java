@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +25,6 @@ public class StatusChecker {
     private static String databaseUrl = System.getenv("TANAIS_SERVICE_DB_URL");
     private static String databasePass = System.getenv("TANAIS_SERVICE_DB_PWD");
     private static String databaseLogin = System.getenv("TANAIS_SERVICE_DB_USER");
-//    private static final String docNumber = "750-89810825";
     private static List<Map> documentNum;
 
     public static void main(String[] args) {
@@ -43,10 +41,6 @@ public class StatusChecker {
             );
             StatusChecker checker = new StatusChecker();
             documentNum = checker.getDocNumber();
-//            documentNum.forEach(map -> {
-//                System.out.println((String) map.get("master_document_no"));
-//            });
-//            System.out.println(documentNum.get(37).get("master_document_no").toString());
             documentNum.forEach(map -> {
                 checker.connectToApi((String)map.get("master_document_no"));
             });
