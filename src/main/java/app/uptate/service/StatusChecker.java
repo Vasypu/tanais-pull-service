@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,9 @@ public class StatusChecker {
     private static List<Map> documentNum;
 
     public static void main(String[] args) {
+        long startTime = System.currentTimeMillis();
+        LOGGER.info("+ Start tanais update service...");
+        System.out.println("+ Start tanais update service...");
         try {
             if (Strings.isNullOrEmpty(databaseUrl)) {
                 throw new IllegalStateException("! Database source isn't defined");
@@ -39,10 +43,12 @@ public class StatusChecker {
             );
             StatusChecker checker = new StatusChecker();
             documentNum = checker.getDocNumber();
-            documentNum.forEach(map -> {
-                checker.connectToApi(map.get("master_document_no").toString());
-                checker.updateOrderStatus();
-            });
+//            documentNum.forEach(map -> {
+//                checker.connectToApi(map.get("master_document_no").toString());
+//                checker.updateOrderStatus();
+//            });
+            checker.connectToApi(docNumber);
+//            checker.updateOrderStatus();
 
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
@@ -51,6 +57,8 @@ public class StatusChecker {
                 Base.close();
             }
         }
+        System.out.println("! Update done: " + (System.currentTimeMillis() - startTime) / 1000 + " s");
+        LOGGER.info("! Update done: {} s", (System.currentTimeMillis() - startTime) / 1000);
     }
 
     // получаем список всех номеров накладных из таблицы cargoflow_shipment
@@ -62,6 +70,7 @@ public class StatusChecker {
 
     // отправка get запроса к api
     void connectToApi(String docNumber) {
+        System.out.println("docNumber " + docNumber);
         DefaultHttpClient Client = new DefaultHttpClient();
         HttpGet httpGet = new HttpGet("https://b2c.tanais.tech/api/v1/client/awb-status/" + docNumber + "/");
         String encoding = null;
@@ -71,14 +80,7 @@ public class StatusChecker {
             HttpResponse response = Client.execute(httpGet);
             String result = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             // проверка если возвращается ошибка
-            System.out.println("result " + result);
-            LOGGER.info("result " + result);
-
-            Shipment shipment = getJsonMapper().readValue(result, Shipment.class);
-            updateShipmentStatus(shipment);
-            shipment.getOrders().forEach(order -> {
-                orderNumber.put(order.getNum(), order.getStatus());
-            });
+            handleResponse(result);
         } catch (IOException e) {
             LOGGER.error("! Tanais Update service call failure {}", e.getMessage());
         }
@@ -99,6 +101,27 @@ public class StatusChecker {
         Base.openTransaction();
         final String query = "UPDATE cargoflow_shipment SET custom_status = '" + shipment.getAwbStatus() + "' WHERE master_document_no = '" + docNumber + "'";
         Base.exec(query);
+    }
+
+    private void handleResponse(String message) {
+        try {
+            JsonRpcResponse response = getJsonMapper().readValue(message, JsonRpcResponse.class);
+            if (!response.success()) {
+                System.out.println("response.getError() " + response.getErrors());
+                LOGGER.error("Tanais Update service call failure: {}", response.getErrors());
+            } else {
+                Shipment shipment = getJsonMapper().readValue(message, Shipment.class);
+                updateShipmentStatus(shipment);
+                shipment.getOrders().forEach(order -> {
+                    orderNumber.put(order.getNum(), order.getStatus());
+                });
+                updateOrderStatus();
+            }
+        } catch (Exception e) {
+            System.out.println("Parsing result error: " + e.getMessage());
+            LOGGER.error("Parsing result error: {}", e.getMessage());
+        }
+//        return Collections.emptyList();
     }
 
     private ObjectMapper getJsonMapper() {
