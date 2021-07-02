@@ -1,3 +1,5 @@
+package app.uptate.service;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Order {

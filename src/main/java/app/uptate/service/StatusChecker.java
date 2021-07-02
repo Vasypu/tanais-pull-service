@@ -1,3 +1,5 @@
+package app.uptate.service;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
@@ -19,9 +21,12 @@ import java.util.Map;
 public class StatusChecker {
     private static final Logger LOGGER = LoggerFactory.getLogger(StatusChecker.class);
     private static ObjectMapper mapper = null;
-    private HashMap<String, String> orderNumber = new HashMap<>();
-    private static String databaseUrl = "jdbc:postgresql://localhost:5432/e.commerce";
+    private final HashMap<String, String> orderNumber = new HashMap<>();
+    private static String databaseUrl = System.getenv("TANAIS_SERVICE_DB_URL");
+    private static String databasePass = System.getenv("TANAIS_SERVICE_DB_PWD");
+    private static String databaseLogin = System.getenv("TANAIS_SERVICE_DB_USER");
     private static final String docNumber = "750-89819321";
+    private static List<Map> documentNum;
 
     public static void main(String[] args) {
         try {
@@ -29,12 +34,15 @@ public class StatusChecker {
                 throw new IllegalStateException("! Database source isn't defined");
             }
             Base.open("org.postgresql.Driver", databaseUrl,
-                    "postgres",
-                    "l980327a"
+                    databaseLogin,
+                    databasePass
             );
             StatusChecker checker = new StatusChecker();
-            checker.connectToApi(docNumber);
-            checker.updateOrderStatus();
+            documentNum = checker.getDocNumber();
+            documentNum.forEach(map -> {
+                checker.connectToApi(map.get("master_document_no").toString());
+                checker.updateOrderStatus();
+            });
 
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
@@ -45,14 +53,11 @@ public class StatusChecker {
         }
     }
 
-    void getDocNumber () {
+    // получаем список всех номеров накладных из таблицы cargoflow_shipment
+    List<Map> getDocNumber () {
         final String query = "SELECT master_document_no FROM cargoflow_shipment";
-        List<Map> statusList = Base.findAll(query);
-//        System.out.println(statusList.toString());
-// список номеров накладных
-        statusList.forEach(map -> {
-            System.out.println( map.get("master_document_no"));
-        });
+        List<Map> documentNum = Base.findAll(query);
+        return documentNum;
     }
 
     // отправка get запроса к api
@@ -65,7 +70,9 @@ public class StatusChecker {
             httpGet.setHeader("Authorization", "Basic " + encoding);
             HttpResponse response = Client.execute(httpGet);
             String result = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            // проверка если возвращается ошибка
             System.out.println("result " + result);
+            LOGGER.info("result " + result);
 
             Shipment shipment = getJsonMapper().readValue(result, Shipment.class);
             updateShipmentStatus(shipment);
@@ -73,24 +80,23 @@ public class StatusChecker {
                 orderNumber.put(order.getNum(), order.getStatus());
             });
         } catch (IOException e) {
-            LOGGER.error("! Tanais service call failure {}", e.getMessage());
+            LOGGER.error("! Tanais Update service call failure {}", e.getMessage());
         }
     }
 
     // обновление в таблице order поля custom_status по номеру заказа
     void updateOrderStatus() {
-        // поиск в таблице order по трек номеру
-//        final String query = "SELECT * FROM public.order WHERE tracking_number = ?";
-//        List<Map> orderList = Base.findAll(query, orderNumber.get(0));
-
         orderNumber.forEach((num, status) -> {
             final String query = "UPDATE public.order SET custom_status = '" + status + "' WHERE tracking_number = '" + num + "'";
             Base.exec(query);
         });
+        Base.commitTransaction();
     }
 
     // обновление статуса shipment в таблице cargoflow_shipment
     void updateShipmentStatus(Shipment shipment) {
+        // начинается транзакция
+        Base.openTransaction();
         final String query = "UPDATE cargoflow_shipment SET custom_status = '" + shipment.getAwbStatus() + "' WHERE master_document_no = '" + docNumber + "'";
         Base.exec(query);
     }

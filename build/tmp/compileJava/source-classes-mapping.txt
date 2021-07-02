@@ -1,6 +1,6 @@
-Order.java
- Order
-Shipment.java
- Shipment
-StatusChecker.java
- StatusChecker
+app/uptate/service/StatusChecker.java
+ app.uptate.service.StatusChecker
+app/uptate/service/Shipment.java
+ app.uptate.service.Shipment
+app/uptate/service/Order.java
+ app.uptate.service.Order
