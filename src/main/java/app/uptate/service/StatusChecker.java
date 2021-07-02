@@ -26,7 +26,7 @@ public class StatusChecker {
     private static String databaseUrl = System.getenv("TANAIS_SERVICE_DB_URL");
     private static String databasePass = System.getenv("TANAIS_SERVICE_DB_PWD");
     private static String databaseLogin = System.getenv("TANAIS_SERVICE_DB_USER");
-    private static final String docNumber = "750-89810825";
+//    private static final String docNumber = "750-89810825";
     private static List<Map> documentNum;
 
     public static void main(String[] args) {
@@ -46,11 +46,11 @@ public class StatusChecker {
 //            documentNum.forEach(map -> {
 //                System.out.println((String) map.get("master_document_no"));
 //            });
-//            System.out.println(documentNum.toString());
+//            System.out.println(documentNum.get(37).get("master_document_no").toString());
             documentNum.forEach(map -> {
                 checker.connectToApi((String)map.get("master_document_no"));
             });
-//            checker.connectToApi(docNumber);
+//            checker.connectToApi("Заполненный проект манифеста СберЛогистика ver 2.8 (test).xlsx");
 
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
@@ -82,7 +82,7 @@ public class StatusChecker {
             HttpResponse response = Client.execute(httpGet);
             String result = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             // проверка если возвращается ошибка
-            handleResponse(result);
+            handleResponse(result, docNumber);
             return;
         } catch (IOException e) {
             LOGGER.error("! Tanais Update service call failure {}", e.getMessage());
@@ -99,14 +99,14 @@ public class StatusChecker {
     }
 
     // обновление статуса shipment в таблице cargoflow_shipment
-    void updateShipmentStatus(Shipment shipment) {
+    void updateShipmentStatus(Shipment shipment, String docNumber) {
         // начинается транзакция
         Base.openTransaction();
         final String query = "UPDATE cargoflow_shipment SET custom_status = '" + shipment.getAwbStatus() + "' WHERE master_document_no = '" + docNumber + "'";
         Base.exec(query);
     }
 
-    private void handleResponse(String message) {
+    private void handleResponse(String message, String docNumber) {
         try {
             JsonRpcResponse response = getJsonMapper().readValue(message, JsonRpcResponse.class);
             if (!response.success()) {
@@ -114,7 +114,7 @@ public class StatusChecker {
                 LOGGER.error("Tanais Update service call failure: {}", response.getErrors());
             } else {
                 Shipment shipment = getJsonMapper().readValue(message, Shipment.class);
-                updateShipmentStatus(shipment);
+                updateShipmentStatus(shipment, docNumber);
                 orderNumber = new HashMap<>();
                 shipment.getOrders().forEach(order -> {
                     orderNumber.put(order.getNum(), order.getStatus());
