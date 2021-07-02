@@ -22,11 +22,11 @@ import java.util.Map;
 public class StatusChecker {
     private static final Logger LOGGER = LoggerFactory.getLogger(StatusChecker.class);
     private static ObjectMapper mapper = null;
-    private final HashMap<String, String> orderNumber = new HashMap<>();
+    private HashMap<String, String> orderNumber;
     private static String databaseUrl = System.getenv("TANAIS_SERVICE_DB_URL");
     private static String databasePass = System.getenv("TANAIS_SERVICE_DB_PWD");
     private static String databaseLogin = System.getenv("TANAIS_SERVICE_DB_USER");
-    private static final String docNumber = "750-89819321";
+    private static final String docNumber = "750-89810825";
     private static List<Map> documentNum;
 
     public static void main(String[] args) {
@@ -44,11 +44,13 @@ public class StatusChecker {
             StatusChecker checker = new StatusChecker();
             documentNum = checker.getDocNumber();
 //            documentNum.forEach(map -> {
-//                checker.connectToApi(map.get("master_document_no").toString());
-//                checker.updateOrderStatus();
+//                System.out.println((String) map.get("master_document_no"));
 //            });
-            checker.connectToApi(docNumber);
-//            checker.updateOrderStatus();
+//            System.out.println(documentNum.toString());
+            documentNum.forEach(map -> {
+                checker.connectToApi((String)map.get("master_document_no"));
+            });
+//            checker.connectToApi(docNumber);
 
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
@@ -81,13 +83,14 @@ public class StatusChecker {
             String result = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             // проверка если возвращается ошибка
             handleResponse(result);
+            return;
         } catch (IOException e) {
             LOGGER.error("! Tanais Update service call failure {}", e.getMessage());
         }
     }
 
     // обновление в таблице order поля custom_status по номеру заказа
-    void updateOrderStatus() {
+    void updateOrderStatus(HashMap<String, String> orderNumber) {
         orderNumber.forEach((num, status) -> {
             final String query = "UPDATE public.order SET custom_status = '" + status + "' WHERE tracking_number = '" + num + "'";
             Base.exec(query);
@@ -112,16 +115,16 @@ public class StatusChecker {
             } else {
                 Shipment shipment = getJsonMapper().readValue(message, Shipment.class);
                 updateShipmentStatus(shipment);
+                orderNumber = new HashMap<>();
                 shipment.getOrders().forEach(order -> {
                     orderNumber.put(order.getNum(), order.getStatus());
                 });
-                updateOrderStatus();
+                updateOrderStatus(orderNumber);
             }
         } catch (Exception e) {
             System.out.println("Parsing result error: " + e.getMessage());
             LOGGER.error("Parsing result error: {}", e.getMessage());
         }
-//        return Collections.emptyList();
     }
 
     private ObjectMapper getJsonMapper() {

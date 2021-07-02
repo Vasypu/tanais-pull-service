@@ -2,10 +2,6 @@ app/uptate/service/Order.java
  app.uptate.service.Order
 app/uptate/service/Shipment.java
  app.uptate.service.Shipment
-app/uptate/service/JsonRpcError.java
- app.uptate.service.JsonRpcError
-app/uptate/service/JsonRpcMessage.java
- app.uptate.service.JsonRpcMessage
 app/uptate/service/JsonRpcResponse.java
  app.uptate.service.JsonRpcResponse
 app/uptate/service/StatusChecker.java
