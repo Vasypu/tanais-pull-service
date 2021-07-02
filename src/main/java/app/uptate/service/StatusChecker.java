@@ -44,7 +44,6 @@ public class StatusChecker {
             documentNum.forEach(map -> {
                 checker.connectToApi((String)map.get("master_document_no"));
             });
-//            checker.connectToApi("Заполненный проект манифеста СберЛогистика ver 2.8 (test).xlsx");
 
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
@@ -68,17 +67,16 @@ public class StatusChecker {
     void connectToApi(String docNumber) {
         System.out.println("docNumber " + docNumber);
         DefaultHttpClient Client = new DefaultHttpClient();
-        HttpGet httpGet = new HttpGet("https://b2c.tanais.tech/api/v1/client/awb-status/" + docNumber + "/");
-        String encoding = null;
         try {
-            encoding = DatatypeConverter.printBase64Binary("sblogistica.ru:zQMFQ6b".getBytes("UTF-8"));
+            HttpGet httpGet = new HttpGet("https://b2c.tanais.tech/api/v1/client/awb-status/" + docNumber + "/");
+            String encoding = DatatypeConverter.printBase64Binary("sblogistica.ru:zQMFQ6b".getBytes("UTF-8"));
             httpGet.setHeader("Authorization", "Basic " + encoding);
             HttpResponse response = Client.execute(httpGet);
             String result = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             // проверка если возвращается ошибка
             handleResponse(result, docNumber);
             return;
-        } catch (IOException e) {
+        } catch (Exception e) {
             LOGGER.error("! Tanais Update service call failure {}", e.getMessage());
         }
     }
