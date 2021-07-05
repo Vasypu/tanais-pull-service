@@ -32,6 +32,7 @@ dependencies {
     implementation 'org.javalite:activejdbc:2.3'
     implementation 'org.postgresql:postgresql:42.2.18'
     implementation group: 'commons-httpclient', name: 'commons-httpclient', version: '3.1'
+    implementation 'app.cargoflow:e-commerce-api:2.0.42'
 
 }
 

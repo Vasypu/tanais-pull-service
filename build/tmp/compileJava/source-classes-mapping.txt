@@ -1,8 +1,0 @@
-app/uptate/service/JsonRpcResponse.java
- app.uptate.service.JsonRpcResponse
-app/uptate/service/Shipment.java
- app.uptate.service.Shipment
-app/uptate/service/Order.java
- app.uptate.service.Order
-app/uptate/service/StatusChecker.java
- app.uptate.service.StatusChecker

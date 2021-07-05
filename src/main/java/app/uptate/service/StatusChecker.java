@@ -1,9 +1,11 @@
 package app.uptate.service;
 
+import app.cargoflow.ecommerce.model.Provider;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.*;
 import org.apache.http.impl.client.*;
 import org.apache.http.util.EntityUtils;
@@ -11,9 +13,8 @@ import org.javalite.activejdbc.Base;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.bind.DatatypeConverter;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +26,9 @@ public class StatusChecker {
     private static String databaseUrl = System.getenv("TANAIS_SERVICE_DB_URL");
     private static String databasePass = System.getenv("TANAIS_SERVICE_DB_PWD");
     private static String databaseLogin = System.getenv("TANAIS_SERVICE_DB_USER");
+    private static final String tanaisProviderId = System.getenv("TANAIS_PROVIDER_ID");
     private static List<Map> documentNum;
+    private static Provider tanaisProvider;
 
     public static void main(String[] args) {
         long startTime = System.currentTimeMillis();
@@ -39,6 +42,13 @@ public class StatusChecker {
                     databaseLogin,
                     databasePass
             );
+
+            tanaisProvider = Provider.getByCode(tanaisProviderId);
+            if (tanaisProvider == null){
+                LOGGER.error("Please configure tanais provider id (loaded configuration is empty, id: {})", tanaisProviderId);
+                return;
+            }
+
             StatusChecker checker = new StatusChecker();
             documentNum = checker.getDocNumber();
             documentNum.forEach(map -> {
@@ -66,12 +76,16 @@ public class StatusChecker {
     // отправка get запроса к api
     void connectToApi(String docNumber) {
         System.out.println("docNumber " + docNumber);
-        DefaultHttpClient Client = new DefaultHttpClient();
+        HttpClient client = HttpClientBuilder.create().build();
         try {
-            HttpGet httpGet = new HttpGet("https://b2c.tanais.tech/api/v1/client/awb-status/" + docNumber + "/");
-            String encoding = DatatypeConverter.printBase64Binary("sblogistica.ru:zQMFQ6b".getBytes("UTF-8"));
-            httpGet.setHeader("Authorization", "Basic " + encoding);
-            HttpResponse response = Client.execute(httpGet);
+            HttpGet httpGet = new HttpGet(tanaisProvider.getCallbackUrl() + "/client/awb-status/" + docNumber + "/");
+            httpGet.addHeader("Authorization", "Basic " + Base64.getEncoder()
+                    .encodeToString(
+                            (tanaisProvider.getPlatformId() + ":" + tanaisProvider.getPlatformSecret())
+                                    .getBytes(StandardCharsets.UTF_8))
+            );
+
+            HttpResponse response = client.execute(httpGet);
             String result = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             // проверка если возвращается ошибка
             handleResponse(result, docNumber);
