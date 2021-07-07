@@ -6,15 +6,15 @@ public class Order {
 
     public Order() {}
     @JsonProperty("num")
-    String num;
+    private String num;
     @JsonProperty("status")
-    String status;
+    private String status;
     @JsonProperty("statusRu")
-    String statusRu;
+    private String statusRu;
     @JsonProperty("statusDate")
-    String statusDate;
+    private String statusDate;
     @JsonProperty("register")
-    String register;
+    private String register;
 
     public String getNum() { return num; }
     public void setNum(String num) { this.num = num; }

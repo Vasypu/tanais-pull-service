@@ -22,10 +22,11 @@ import java.util.Map;
 public class StatusChecker {
     private static final Logger LOGGER = LoggerFactory.getLogger(StatusChecker.class);
     private static ObjectMapper mapper = null;
-    private HashMap<String, String> orderNumber;
-    private static String databaseUrl = System.getenv("TANAIS_SERVICE_DB_URL");
-    private static String databasePass = System.getenv("TANAIS_SERVICE_DB_PWD");
-    private static String databaseLogin = System.getenv("TANAIS_SERVICE_DB_USER");
+    private HashMap<String, String> ordersStatus;
+    private HashMap<String, String> ordersRegisters;
+    private static final String databaseUrl = System.getenv("TANAIS_SERVICE_DB_URL");
+    private static final String databasePass = System.getenv("TANAIS_SERVICE_DB_PWD");
+    private static final String databaseLogin = System.getenv("TANAIS_SERVICE_DB_USER");
     private static final String tanaisProviderId = System.getenv("TANAIS_PROVIDER_ID");
     private static List<Map> documentNum;
     private static Provider tanaisProvider;
@@ -96,18 +97,25 @@ public class StatusChecker {
     }
 
     // обновление в таблице order поля custom_status по номеру заказа
-    void updateOrderStatus(HashMap<String, String> orderNumber) {
-        orderNumber.forEach((num, status) -> {
+    void updateOrderStatus(HashMap<String, String> ordersStatus) {
+        ordersStatus.forEach((num, status) -> {
             final String query = "UPDATE public.order SET custom_status = '" + status + "' WHERE tracking_number = '" + num + "'";
             Base.exec(query);
         });
-        Base.commitTransaction();
+    }
+
+    // обновление в таблице order поля register по номеру заказа
+    void updateOrderRegister(HashMap<String, String> ordersRegisters) {
+        ordersRegisters.forEach((num, register) -> {
+            if (!register.isEmpty()) {
+                final String query = "UPDATE public.order SET register = '" + register + "' WHERE tracking_number = '" + num + "'";
+                Base.exec(query);
+            }
+        });
     }
 
     // обновление статуса shipment в таблице cargoflow_shipment
     void updateShipmentStatus(Shipment shipment, String docNumber) {
-        // начинается транзакция
-        Base.openTransaction();
         final String query = "UPDATE cargoflow_shipment SET custom_status = '" + shipment.getAwbStatus() + "' WHERE master_document_no = '" + docNumber + "'";
         Base.exec(query);
     }
@@ -120,12 +128,18 @@ public class StatusChecker {
                 LOGGER.error("Tanais Update service call failure: {}", response.getErrors());
             } else {
                 Shipment shipment = getJsonMapper().readValue(message, Shipment.class);
+                // начинается транзакция
+                Base.openTransaction();
                 updateShipmentStatus(shipment, docNumber);
-                orderNumber = new HashMap<>();
+                ordersStatus = new HashMap<>();
                 shipment.getOrders().forEach(order -> {
-                    orderNumber.put(order.getNum(), order.getStatus());
+                    ordersStatus.put(order.getNum(), order.getStatus());
+                    ordersRegisters.put(order.getNum(), order.getRegister());
                 });
-                updateOrderStatus(orderNumber);
+                updateOrderRegister(ordersRegisters);
+                updateOrderStatus(ordersStatus);
+                // коммит транзакции
+                Base.commitTransaction();
             }
         } catch (Exception e) {
             System.out.println("Parsing result error: " + e.getMessage());

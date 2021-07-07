@@ -7,9 +7,9 @@ public class Shipment {
 
     public Shipment () {}
     @JsonProperty("awbStatus")
-    String awbStatus;
+    private String awbStatus;
     @JsonProperty("awbStatusDescription")
-    String awbStatusDescription;
+    private String awbStatusDescription;
 
     @JsonProperty("orders")
     private List<Order> orders;
